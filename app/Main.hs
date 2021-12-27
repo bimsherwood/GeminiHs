@@ -2,7 +2,7 @@ module Main where
 
 import Cert (loadCertificate)
 import Config (defaultSiteConfig, certificateStore)
-import Gemini (parsePath)
+import Gemini (parseRequest)
 import FileSystemHandler (createFileSystemHandler)
 import Handler (Handler)
 import Net (ConnectionHandler, serveTlsRequest)
@@ -16,10 +16,10 @@ handlers = [fsHandler]
 
 handleConnection :: ConnectionHandler
 handleConnection sockAddr ctxt =
-  -- TODO: Read path from request
-  let Just path = parsePath "test.txt";
+  -- TODO: Read request
+  let Just request = parseRequest "gemini://localhost/test.txt";
       routed = route handlers
-  in routed path sockAddr ctxt
+  in routed request sockAddr ctxt
 
 main :: IO ()
 main = do

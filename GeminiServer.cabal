@@ -18,6 +18,7 @@ executable GeminiServer
                       bytestring,
                       data-default-class,
                       directory,
+                      network-uri,
                       network-simple-tls,
                       split,
                       tls,
