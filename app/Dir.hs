@@ -1,12 +1,7 @@
-module Dir (Site(..), parsePath, componentValid) where
+module Dir (parsePath, Path) where
 
 import Data.List (intersperse)
 import Data.List.Split (splitOn)
-
-data Site = Site {
-    siteRoot :: FilePath,
-    configRoot :: FilePath
-  }
 
 data PathType = PathType {isAbsolute :: Bool, isIndex :: Bool}
 data Path = Path PathType [String]
@@ -20,8 +15,8 @@ instance Show (Path) where
       then prefix
       else (prefix++) . (++suffix) . concat . intersperse "/" $ components
 
-componentValid :: String -> Bool
-componentValid str =
+pathComponentValid :: String -> Bool
+pathComponentValid str =
   let validChar c = not . elem c $ "./"
       allValidChars = and . map validChar $ str
       notEmpty = not . null $ str
@@ -34,7 +29,7 @@ parsePath str =
       isIndex = last str == '/';
       pathType = PathType {isAbsolute = isAbsolute, isIndex = isIndex}
       components = filter (not . null) . splitOn "/" $ str;
-      isValid = and . map componentValid $ components
+      isValid = and . map pathComponentValid $ components
   in if isValid
     then Just $ Path pathType components
     else Nothing

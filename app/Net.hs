@@ -1,12 +1,12 @@
 module Net (CertificateStore(..), serveTlsRequest) where
 
+import Class (CertificateStore(..))
 import Data.Default.Class
 import Data.X509 (SignedCertificate)
 import Network.TLS (
   Context,
   Credential,
   Credentials(..),
-  credentialLoadX509,
   DebugParams,
   ServerHooks,
   ServerParams(..),
@@ -21,7 +21,6 @@ import Network.Simple.TCP.TLS (
   ServiceName,
   SockAddr)
 
-data CertificateStore = FilePairStore FilePath FilePath
 type Handler = (Context, SockAddr) -> IO ()
 
 earlyDataSize :: Int
@@ -55,11 +54,7 @@ serverParams creds = def {
     serverTicketLifetime = ticketLifetime
   }
 
-loadCertificate :: CertificateStore -> IO (Either String Credential)
-loadCertificate (FilePairStore certPath privateKeyPath) =
-  credentialLoadX509 certPath privateKeyPath
-
-serveTlsRequest :: CertificateStore -> Handler -> IO ()
+serveTlsRequest :: CertificateStore a => a -> Handler -> IO ()
 serveTlsRequest certStore handler = do
   loadCertResult <- loadCertificate certStore
   case loadCertResult of

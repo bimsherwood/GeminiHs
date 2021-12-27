@@ -1,17 +1,10 @@
 module Main where
 
-import Net (CertificateStore(..), serveTlsRequest)
+import Config (defaultSiteConfig, certificateStore)
 import Dir (parsePath)
-
-credStore :: CertificateStore
-credStore = FilePairStore "./localhost.crt" "./localhost.key"
+import Net (CertificateStore(..), serveTlsRequest)
 
 main :: IO ()
 main = do
   putStrLn "Hello, Haskell!"
-  print (parsePath "")
-  print (parsePath "/")
-  print (parsePath "/a/")
-  print (parsePath "/a/b")
-  print (parsePath "/../b")
-  serveTlsRequest credStore (\_ -> putStrLn "Accepted request!")
+  serveTlsRequest (certificateStore defaultSiteConfig) (\_ -> putStrLn "Accepted request!")
