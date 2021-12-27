@@ -2,14 +2,14 @@ module Main where
 
 import Cert (loadCertificate)
 import Config (defaultSiteConfig, certificateStore)
-import Data (parsePath)
+import Gemini (parsePath)
 import FileSystemHandler (createFileSystemHandler)
 import Handler (Handler)
 import Net (ConnectionHandler, serveTlsRequest)
 import Router (route)
 
 fsHandler :: Handler
-fsHandler = createFileSystemHandler defaultSiteConfig
+fsHandler = createFileSystemHandler defaultSiteConfig putStrLn
 
 handlers :: [Handler]
 handlers = [fsHandler]

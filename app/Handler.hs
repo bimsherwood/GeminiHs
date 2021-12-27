@@ -1,6 +1,6 @@
 module Handler (Handler(..), Handles, Handle) where
 
-import Data (Path)
+import Gemini (Path)
 import Network.Simple.TCP.TLS (SockAddr)
 import Network.TLS (Context)
   

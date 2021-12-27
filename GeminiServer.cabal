@@ -9,12 +9,13 @@ executable GeminiServer
     main-is:          Main.hs
     other-modules:    Cert,
                       Config,
-                      Data,
                       FileSystemHandler,
+                      Gemini,
                       Handler,
                       Net,
                       Router
     build-depends:    base >=4.15.0.0,
+                      bytestring,
                       data-default-class,
                       directory,
                       network-simple-tls,

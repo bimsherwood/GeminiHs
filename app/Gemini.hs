@@ -1,4 +1,4 @@
-module Data (parsePath, Path, resolvePath) where
+module Gemini (parsePath, Path, resolvePath) where
 
 import Data.List (intersperse)
 import Data.List.Split (splitOn)
