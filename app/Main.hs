@@ -1,8 +1,11 @@
 module Main where
 
-import Net (serveTlsRequest)
+import Net (CertificateStore(..), serveTlsRequest)
+
+credStore :: CertificateStore
+credStore = FilePairStore "./localhost.crt" "./localhost.key"
 
 main :: IO ()
 main = do
   putStrLn "Hello, Haskell!"
-  serveTlsRequest (\_ -> putStrLn "Accepted request!")
+  serveTlsRequest credStore (\_ -> putStrLn "Accepted request!")

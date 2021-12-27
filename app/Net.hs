@@ -1,19 +1,28 @@
-module Net (serveTlsRequest) where
+module Net (CertificateStore(..), serveTlsRequest) where
 
 import Data.Default.Class
 import Data.X509 (SignedCertificate)
 import Network.TLS (
-  Shared(..),
-  ServerHooks,
-  Supported,
+  Context,
+  Credential,
+  Credentials(..),
+  credentialLoadX509,
   DebugParams,
+  ServerHooks,
   ServerParams(..),
-  Context)
+  Shared(..),
+  Supported(..),
+  Version(..))
+import Network.TLS.Extra.Cipher (
+  ciphersuite_default)
 import Network.Simple.TCP.TLS (
-  SockAddr,
   HostPreference(..),
+  serve,
   ServiceName,
-  serve)
+  SockAddr)
+
+data CertificateStore = FilePairStore FilePath FilePath
+type Handler = (Context, SockAddr) -> IO ()
 
 earlyDataSize :: Int
 earlyDataSize = 0
@@ -21,35 +30,40 @@ earlyDataSize = 0
 ticketLifetime :: Int
 ticketLifetime = 86400 -- 86400 seconds = 1 day
 
-sharedParams :: Shared
-sharedParams = Shared {
-    sharedCredentials = undefined,
-    sharedSessionManager = undefined,
-    sharedCAStore = undefined,
-    sharedValidationCache = undefined,
-    sharedHelloExtensions = undefined
-  }
-
-serverParams :: ServerParams
-serverParams = ServerParams {
-    serverWantClientCert = False,
-    serverCACertificates = [],
-    serverDHEParams = Nothing,
-    serverShared = sharedParams,
-    serverHooks = def,
-    serverSupported = def,
-    serverDebug = def,
-    serverEarlyDataSize = earlyDataSize,
-    serverTicketLifetime = ticketLifetime
-  }
-
 hostPreference :: HostPreference
 hostPreference = HostAny
 
 port :: ServiceName
 port = "1965"
 
-type Handler = (Context, SockAddr) -> IO ()
+sharedParams :: Credentials -> Shared
+sharedParams creds = def {
+    sharedCredentials = creds
+  }
 
-serveTlsRequest :: Handler -> IO ()
-serveTlsRequest handler = serve serverParams hostPreference port handler
+supported :: Supported
+supported = def {
+    supportedVersions = [TLS13, TLS12],
+    supportedCiphers = ciphersuite_default
+  }
+
+serverParams :: Credentials -> ServerParams
+serverParams creds = def {
+    serverShared = sharedParams creds,
+    serverSupported = supported,
+    serverEarlyDataSize = earlyDataSize,
+    serverTicketLifetime = ticketLifetime
+  }
+
+loadCertificate :: CertificateStore -> IO (Either String Credential)
+loadCertificate (FilePairStore certPath privateKeyPath) =
+  credentialLoadX509 certPath privateKeyPath
+
+serveTlsRequest :: CertificateStore -> Handler -> IO ()
+serveTlsRequest certStore handler = do
+  loadCertResult <- loadCertificate certStore
+  case loadCertResult of
+    Left error -> putStrLn error
+    Right cred ->
+      let params = serverParams (Credentials [cred])
+      in serve params hostPreference port handler
