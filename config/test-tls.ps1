@@ -1,0 +1,1 @@
+cls; openssl s_client -connect localhost -servername localhost -port 1965

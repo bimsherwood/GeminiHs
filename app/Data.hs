@@ -1,4 +1,4 @@
-module Dir (parsePath, Path) where
+module Data (parsePath, Path, resolvePath) where
 
 import Data.List (intersperse)
 import Data.List.Split (splitOn)
@@ -17,7 +17,7 @@ instance Show (Path) where
 
 pathComponentValid :: String -> Bool
 pathComponentValid str =
-  let validChar c = not . elem c $ "./"
+  let validChar c = not . elem c $ "/"
       allValidChars = and . map validChar $ str
       notEmpty = not . null $ str
   in allValidChars && notEmpty
@@ -28,8 +28,14 @@ parsePath str =
   let isAbsolute = head str == '/';
       isIndex = last str == '/';
       pathType = PathType {isAbsolute = isAbsolute, isIndex = isIndex}
-      components = filter (not . null) . splitOn "/" $ str;
+      components = filter (/= "..") . filter (not . null) . splitOn "/" $ str;
       isValid = and . map pathComponentValid $ components
   in if isValid
     then Just $ Path pathType components
     else Nothing
+
+resolvePath :: FilePath -> Path -> FilePath
+resolvePath root (Path pathType components) =
+  let join = if last root == '/' then "" else "/";
+      relativePath = Path (pathType { isAbsolute = False }) components
+  in root ++ join ++ show relativePath

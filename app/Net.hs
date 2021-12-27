@@ -1,8 +1,12 @@
-module Net (CertificateStore(..), serveTlsRequest) where
+module Net (ConnectionHandler, serveTlsRequest) where
 
-import Class (CertificateStore(..))
 import Data.Default.Class
 import Data.X509 (SignedCertificate)
+import Network.Simple.TCP.TLS (
+  HostPreference(..),
+  serve,
+  ServiceName,
+  SockAddr)
 import Network.TLS (
   Context,
   Credential,
@@ -15,13 +19,8 @@ import Network.TLS (
   Version(..))
 import Network.TLS.Extra.Cipher (
   ciphersuite_default)
-import Network.Simple.TCP.TLS (
-  HostPreference(..),
-  serve,
-  ServiceName,
-  SockAddr)
 
-type Handler = (Context, SockAddr) -> IO ()
+type ConnectionHandler = SockAddr -> Context -> IO ()
 
 earlyDataSize :: Int
 earlyDataSize = 0
@@ -54,11 +53,8 @@ serverParams creds = def {
     serverTicketLifetime = ticketLifetime
   }
 
-serveTlsRequest :: CertificateStore a => a -> Handler -> IO ()
-serveTlsRequest certStore handler = do
-  loadCertResult <- loadCertificate certStore
-  case loadCertResult of
-    Left error -> putStrLn error
-    Right cred ->
-      let params = serverParams (Credentials [cred])
-      in serve params hostPreference port handler
+serveTlsRequest :: Credential -> ConnectionHandler -> IO ()
+serveTlsRequest cert handler =
+  let params = serverParams (Credentials [cert]);
+      uncurriedHandler = (\(ctxt, sockAddr) -> handler sockAddr ctxt)
+  in serve params hostPreference port uncurriedHandler

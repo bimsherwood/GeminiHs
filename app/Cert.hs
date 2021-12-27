@@ -1,6 +1,5 @@
-module Cert (FilePairCertStore(..)) where
+module Cert (FilePairCertStore(..), loadCertificate) where
 
-import Class (CertificateStore(..))
 import Network.TLS (credentialLoadX509, Credential)
 
 data FilePairCertStore = FilePairCertStore {
@@ -8,8 +7,7 @@ data FilePairCertStore = FilePairCertStore {
     keyFilePath :: FilePath
   }
 
-instance CertificateStore (FilePairCertStore) where
-  loadCertificate store =
-    let certPath = certFilePath store;
-        privateKeyPath = keyFilePath store
-    in credentialLoadX509 certPath privateKeyPath
+loadCertificate store =
+  let certPath = certFilePath store;
+      privateKeyPath = keyFilePath store
+  in credentialLoadX509 certPath privateKeyPath

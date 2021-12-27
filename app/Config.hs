@@ -1,4 +1,7 @@
-module Config (SiteConfig(..), defaultSiteConfig) where
+module Config (
+    defaultSiteConfig,
+    SiteConfig(..)
+  ) where
 
 import Cert (FilePairCertStore(..))
 

@@ -7,9 +7,16 @@ maintainer:         bimmosherwood@gmail.com
 
 executable GeminiServer
     main-is:          Main.hs
-    other-modules:    Cert, Class, Config, Dir, Net
-    build-depends:    base >=4.15.0.0 && <4.16.0,
+    other-modules:    Cert,
+                      Config,
+                      Data,
+                      FileSystemHandler,
+                      Handler,
+                      Net,
+                      Router
+    build-depends:    base >=4.15.0.0,
                       data-default-class,
+                      directory,
                       network-simple-tls,
                       split,
                       tls,
