@@ -13,7 +13,7 @@ executable GeminiServer
                       Gemini,
                       Handler,
                       Net,
-                      Router
+                      NotFoundHandler
     build-depends:    base >=4.15.0.0,
                       bytestring,
                       data-default-class,

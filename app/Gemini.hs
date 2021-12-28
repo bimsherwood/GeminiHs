@@ -8,8 +8,10 @@ module Gemini (
   Response,
   serialiseResponse) where
 
-import Data.ByteString.Lazy (ByteString)
-import Data.ByteString.Lazy.UTF8 (fromString)
+import qualified Data.ByteString.Lazy as Lazy
+import qualified Data.ByteString.Lazy.UTF8 as LazyUTF8
+import qualified Data.ByteString as Strict
+import qualified Data.ByteString.UTF8 as StrictUTF8
 import Data.List (intersperse)
 import Data.List.Split (splitOn)
 import Network.Simple.TCP.TLS (SockAddr)
@@ -29,7 +31,7 @@ data Status =
 data Response = Response {
     responseStatus :: Status,
     responseMeta :: ResponseMeta,
-    responseBody :: Maybe ByteString
+    responseBody :: Maybe LazyUTF8.ByteString
   }
 
 instance Show (Path) where
@@ -86,9 +88,10 @@ assertGeminiScheme uri =
     then Just ()
     else Nothing
 
-parseRequest :: SockAddr -> String -> Maybe Request
-parseRequest sockAddr str = do
-  terminatedRequest <- validateRequestTerminator str
+parseRequest :: SockAddr -> StrictUTF8.ByteString -> Maybe Request
+parseRequest sockAddr input = do
+  let inputStr = StrictUTF8.toString input
+  terminatedRequest <- validateRequestTerminator inputStr
   uri <- parseURI terminatedRequest
   assertGeminiScheme uri
   path <- parsePath . uriPath $ uri
@@ -97,7 +100,7 @@ parseRequest sockAddr str = do
 meta :: String -> ResponseMeta
 meta = ResponseMeta . take 1024
 
-respondSuccess :: String -> ByteString -> Response
+respondSuccess :: String -> LazyUTF8.ByteString -> Response
 respondSuccess msg content = Response {
     responseStatus = Success,
     responseMeta = meta msg,
@@ -111,12 +114,12 @@ respondPermFailure msg = Response {
     responseBody = Nothing
   }
 
-serialiseResponse :: Response -> ByteString
+serialiseResponse :: Response -> LazyUTF8.ByteString
 serialiseResponse response =
   let statusStr = show . statusCode . responseStatus $ response
       ResponseMeta metaStr = responseMeta response
       headerStr = statusStr ++ " " ++ metaStr ++ "\r\n"
-      header = fromString headerStr
+      header = LazyUTF8.fromString headerStr
   in case responseBody response of
     Just content  -> header <> content
     Nothing       -> header
