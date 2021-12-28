@@ -22,6 +22,7 @@ executable GeminiServer
                       network-simple-tls,
                       split,
                       tls,
+                      utf8-string,
                       x509,
                       x509-store
     hs-source-dirs:   app

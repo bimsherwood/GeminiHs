@@ -3,11 +3,10 @@ module FileSystemHandler (createFileSystemHandler) where
 import Prelude hiding (readFile)
 
 import Config (SiteConfig(..))
-import Gemini (Request(..), resolveVirtualPath)
+import Gemini (Request(..), respondSuccess, resolveVirtualPath)
 import Data.ByteString.Lazy (readFile)
 import Handler (Handler(..), Handles, Handle)
 import System.Directory (doesFileExist)
-import Network.TLS (sendData)
 
 data FileSystemHandler = FileSystemHandler {
     fshRoot :: FilePath,
@@ -15,18 +14,18 @@ data FileSystemHandler = FileSystemHandler {
   }
 
 handles :: FileSystemHandler -> Handles
-handles handler (Request _ path) _ =
+handles handler (Request _ _ path) =
   let rootDir = fshRoot handler;
   in doesFileExist . resolveVirtualPath rootDir $ path
 
 handle :: FileSystemHandler -> Handle
-handle handler (Request _ path)  _ context = do
+handle handler (Request _ _ path) = do
   let rootDir = fshRoot handler
   let log = fshLogger handler
   let filePath = resolveVirtualPath rootDir path
   log ("Serving file " ++ filePath)
   fileContent <- readFile filePath
-  sendData context fileContent
+  return . respondSuccess "text/plain" $ fileContent
 
 getHandler :: FileSystemHandler -> Handler
 getHandler x = Handler (handles x) (handle x)

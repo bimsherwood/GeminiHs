@@ -1,11 +1,15 @@
 module Router (route) where
 
+import Gemini (respondPermFailure)
 import Handler (Handler(..), Handle)
 
+noHandlerError :: String
+noHandlerError = "No appropriate handler was found for this request."
+
 route :: [Handler] -> Handle
-route [] _ _ _ = return ()
-route ((Handler handles handle):xs) request addr ctxt = do
-  applicable <- handles request addr
-  if applicable
-    then handle request addr ctxt
-    else route xs request addr ctxt
+route [] _ = return . respondPermFailure $ noHandlerError
+route ((Handler handles handle):xs) request = do
+  applicableHandler <- handles request
+  if applicableHandler
+    then handle request
+    else route xs request

@@ -2,15 +2,35 @@ module Gemini (
   parseRequest,
   Path,
   Request(..),
-  resolveVirtualPath) where
+  resolveVirtualPath,
+  respondPermFailure,
+  respondSuccess,
+  Response,
+  serialiseResponse) where
 
+import Data.ByteString.Lazy (ByteString)
+import Data.ByteString.Lazy.UTF8 (fromString)
 import Data.List (intersperse)
 import Data.List.Split (splitOn)
+import Network.Simple.TCP.TLS (SockAddr)
 import Network.URI (parseURI, URI(..))
 
 data PathType = PathType {isAbsolute :: Bool, isIndex :: Bool}
 data Path = Path PathType [String]
-data Request = Request URI Path
+data Request = Request SockAddr URI Path
+data ResponseMeta = ResponseMeta String
+data Status =
+  Input |
+  Success |
+  Redirect |
+  TempFailure |
+  PermFailure |
+  ClientCertRequired
+data Response = Response {
+    responseStatus :: Status,
+    responseMeta :: ResponseMeta,
+    responseBody :: Maybe ByteString
+  }
 
 instance Show (Path) where
   show (Path pathType components) =
@@ -21,14 +41,13 @@ instance Show (Path) where
       then prefix
       else (prefix++) . (++suffix) . concat . intersperse "/" $ components
 
-splitOnce :: String -> String -> Maybe (String, String)
-splitOnce "" str = Just ("", str)
-splitOnce _ "" = Nothing
-splitOnce substr str@(x:xs) =
-  let hasPrefix pref str = take (length pref) str == pref
-  in if hasPrefix substr str
-    then Just ("", str)
-    else splitOnce substr xs >>= \(left, right) -> Just (x:left, right)
+statusCode :: Status -> Int
+statusCode Input = 10
+statusCode Success = 20
+statusCode Redirect = 30
+statusCode TempFailure = 40
+statusCode PermFailure = 50
+statusCode ClientCertRequired = 60
 
 pathComponentValid :: String -> Bool
 pathComponentValid str =
@@ -67,13 +86,40 @@ assertGeminiScheme uri =
     then Just ()
     else Nothing
 
-parseRequest :: String -> Maybe Request
-parseRequest str = do
+parseRequest :: SockAddr -> String -> Maybe Request
+parseRequest sockAddr str = do
   terminatedRequest <- validateRequestTerminator str
   uri <- parseURI terminatedRequest
   assertGeminiScheme uri
   path <- parsePath . uriPath $ uri
-  return $ Request uri path
+  return $ Request sockAddr uri path
+
+meta :: String -> ResponseMeta
+meta = ResponseMeta . take 1024
+
+respondSuccess :: String -> ByteString -> Response
+respondSuccess msg content = Response {
+    responseStatus = Success,
+    responseMeta = meta msg,
+    responseBody = Just content
+  }
+  
+respondPermFailure :: String -> Response
+respondPermFailure msg = Response {
+    responseStatus = PermFailure,
+    responseMeta = meta msg,
+    responseBody = Nothing
+  }
+
+serialiseResponse :: Response -> ByteString
+serialiseResponse response =
+  let statusStr = show . statusCode . responseStatus $ response
+      ResponseMeta metaStr = responseMeta response
+      headerStr = statusStr ++ " " ++ metaStr ++ "\r\n"
+      header = fromString headerStr
+  in case responseBody response of
+    Just content  -> header <> content
+    Nothing       -> header
 
 resolveVirtualPath :: FilePath -> Path -> FilePath
 resolveVirtualPath root (Path pathType components) =
