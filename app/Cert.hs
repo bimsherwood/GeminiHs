@@ -1,13 +1,23 @@
-module Cert (FilePairCertStore(..), loadCertificate) where
+module Cert (
+  CertificateLoader,
+  FilePairCertStore(..),
+  loadCertificateFromFiles) where
 
 import Network.TLS (credentialLoadX509, Credential)
+
+type CertificateLoader = IO (Maybe Credential)
 
 data FilePairCertStore = FilePairCertStore {
     certFilePath :: FilePath,
     keyFilePath :: FilePath
   }
 
-loadCertificate store =
-  let certPath = certFilePath store;
+loadCertificateFromFiles :: FilePairCertStore -> CertificateLoader
+loadCertificateFromFiles store =
+  let certPath = certFilePath store
       privateKeyPath = keyFilePath store
-  in credentialLoadX509 certPath privateKeyPath
+  in do
+    result <- credentialLoadX509 certPath privateKeyPath
+    return $ case result of
+      Right cert  -> Just cert
+      _           -> Nothing

@@ -1,6 +1,7 @@
 module Gemini (
   parseRequest,
   Path,
+  pathComponents,
   Request(..),
   resolveVirtualPath,
   respondPermFailure,
@@ -73,6 +74,9 @@ parsePath str =
   in if isValid
     then Just $ Path pathType components
     else Nothing
+
+pathComponents :: Path -> [String]
+pathComponents (Path _ components) = components
 
 validateRequestTerminator :: String -> Maybe String
 validateRequestTerminator request =

@@ -1,7 +1,8 @@
 module Main where
 
-import Cert (loadCertificate)
-import Config (defaultSiteConfig, certificateStore, SiteConfig)
+import Cert (CertificateLoader)
+import Config (defaultSiteConfig, SiteConfig(..))
+import DefaultDocumentHandler (createDefaultDocumentHandler)
 import Gemini (
   parseRequest,
   serialiseResponse,
@@ -9,7 +10,7 @@ import Gemini (
   respondPermFailure,
   Response)
 import FileSystemHandler (createFileSystemHandler)
-import Handler (Handle, Handler, route)
+import Handler (Handler, route, Router)
 import Net (ConnectionHandler, serveTlsRequest)
 import Network.TLS (recvData, sendData)
 import NotFoundHandler (createNotFoundHandler)
@@ -28,17 +29,17 @@ noHandlerResponse _ = do
   return . respondPermFailure $
     "No appropriate handler was found for this request."
 
-createRouter :: SiteConfig a -> Handle
+createRouter :: SiteConfig -> Router
 createRouter config = route noHandlerResponse [
     createFileSystemHandler config logMsg,
+    createDefaultDocumentHandler config logMsg,
     createNotFoundHandler logMsg
   ]
 
-createConnectionHandler :: SiteConfig a -> ConnectionHandler
-createConnectionHandler config sockAddr ctxt = do
+createConnectionHandler :: Router -> ConnectionHandler
+createConnectionHandler route sockAddr ctxt = do
   let readRequest = parseRequest sockAddr `fmap` recvData ctxt
   let sendResponse = sendData ctxt . serialiseResponse
-  let route = createRouter config
   request <- readRequest
   case request of
     Just request  -> route request >>= sendResponse
@@ -48,8 +49,9 @@ main :: IO ()
 main = do
   logMsg "Taking protein pills and putting helmet on"
   let config = defaultSiteConfig
-  let connectionHandler = createConnectionHandler config
-  cert <- loadCertificate . certificateStore $ config
+  let router = createRouter config
+  let connectionHandler = createConnectionHandler router
+  cert <- cfgLoadServerCert config
   case cert of
-    Left error -> logMsg error
-    Right cert -> serveTlsRequest cert connectionHandler
+    Just cert -> serveTlsRequest cert connectionHandler
+    Nothing   -> logMsg "Failed to load server certificate."

@@ -9,9 +9,11 @@ executable GeminiServer
     main-is:          Main.hs
     other-modules:    Cert,
                       Config,
+                      DefaultDocumentHandler,
                       FileSystemHandler,
                       Gemini,
                       Handler,
+                      Mime,
                       Net,
                       NotFoundHandler
     build-depends:    base >=4.15.0.0,

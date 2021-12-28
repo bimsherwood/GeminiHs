@@ -3,14 +3,16 @@ module FileSystemHandler (createFileSystemHandler) where
 import Prelude hiding (readFile)
 
 import Config (SiteConfig(..))
-import Gemini (Request(..), respondSuccess, resolveVirtualPath)
 import Data.ByteString.Lazy (readFile)
+import Gemini (pathComponents, Request(..), respondSuccess, resolveVirtualPath)
 import Handler (Handler(..), Handles, Handle)
+import Mime (MimeMapping)
 import System.Directory (doesFileExist)
 
 data FileSystemHandler = FileSystemHandler {
     fshRoot :: FilePath,
-    fshLogger :: String -> IO ()
+    fshLogger :: String -> IO (),
+    fshMimeMap :: MimeMapping
   }
 
 handles :: FileSystemHandler -> Handles
@@ -23,17 +25,22 @@ handle handler (Request _ _ path) = do
   let rootDir = fshRoot handler
   let log = fshLogger handler
   let filePath = resolveVirtualPath rootDir path
+  let fileName = last . pathComponents $ path
+  let fileNameExtension = dropWhile (/= '.') fileName
+  let mimeMap = fshMimeMap handler
+  let mimeType = show . mimeMap . read $ fileNameExtension
   log ("Serving file " ++ filePath)
   fileContent <- readFile filePath
-  return . respondSuccess "text/plain" $ fileContent
+  return . respondSuccess mimeType $ fileContent
 
 getHandler :: FileSystemHandler -> Handler
 getHandler x = Handler (handles x) (handle x)
 
-createFileSystemHandler :: SiteConfig a -> (String -> IO ()) -> Handler
+createFileSystemHandler :: SiteConfig -> (String -> IO ()) -> Handler
 createFileSystemHandler config log =
   getHandler $ FileSystemHandler {
-    fshRoot = siteRoot config,
-    fshLogger = log
+    fshRoot = cfgSiteRoot config,
+    fshLogger = log,
+    fshMimeMap = cfgMimeMap config
   }
 
