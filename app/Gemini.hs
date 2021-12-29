@@ -63,8 +63,8 @@ pathComponentValid str =
 pathComponentFilter :: String -> Bool
 pathComponentFilter = not . null
 
-parsePath :: String -> Maybe Path
-parsePath [] = Nothing
+parsePath :: String -> Either String Path
+parsePath [] = parsePath "/"
 parsePath str =
   let isAbsolute = head str == '/'
       isIndex = last str == '/'
@@ -72,31 +72,31 @@ parsePath str =
       components = filter pathComponentFilter . splitOn "/" $ str
       isValid = and . map pathComponentValid $ components
   in if isValid
-    then Just $ Path pathType components
-    else Nothing
+    then Right $ Path pathType components
+    else Left "Invalid path."
 
 pathComponents :: Path -> [String]
 pathComponents (Path _ components) = components
 
-validateRequestTerminator :: String -> Maybe String
+validateRequestTerminator :: String -> Either String String
 validateRequestTerminator request =
   let limitedRequest = take 1024 request
       requestLines = splitOn "\r\n" limitedRequest
   in case requestLines of
-    (x:xs)  -> Just x
-    _       -> Nothing
+    (x:xs)  -> Right x
+    _       -> Left "Request terminator did not appear within 1024 characters."
 
-assertGeminiScheme :: URI -> Maybe ()
+assertGeminiScheme :: URI -> Either String ()
 assertGeminiScheme uri =
   if uriScheme uri == "gemini:"
-    then Just ()
-    else Nothing
+    then Right ()
+    else Left "Non-Gemini scheme."
 
-parseRequest :: SockAddr -> StrictUTF8.ByteString -> Maybe Request
+parseRequest :: SockAddr -> StrictUTF8.ByteString -> Either String Request
 parseRequest sockAddr input = do
   let inputStr = StrictUTF8.toString input
   terminatedRequest <- validateRequestTerminator inputStr
-  uri <- parseURI terminatedRequest
+  uri <- maybe (Left "Invalid URI") Right $ parseURI terminatedRequest
   assertGeminiScheme uri
   path <- parsePath . uriPath $ uri
   return $ Request sockAddr uri path

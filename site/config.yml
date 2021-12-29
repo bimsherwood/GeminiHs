@@ -1,0 +1,12 @@
+siteRoot: root
+defaultDocument: index.gmi
+
+serverCertificate:
+  filePairCertificateStore:
+    cert: tls.crt
+    key: tls.key
+
+mimeTypes:
+  "gmi":"text/gemini"
+  "gemini":"text/gemini"
+  "txt": "text/plain"

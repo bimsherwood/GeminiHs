@@ -7,9 +7,11 @@ maintainer:         bimmosherwood@gmail.com
 
 executable GeminiServer
     main-is:          Main.hs
-    other-modules:    Cert,
+    other-modules:    Args,
+                      Cert,
                       Config,
                       DefaultDocumentHandler,
+                      Exception,
                       FileSystemHandler,
                       Gemini,
                       Handler,

@@ -1,7 +1,9 @@
 module Main where
 
-import Cert (CertificateLoader)
+import Args (Args(..), loadArgs)
+import Cert (Certificate, CertificateLoader)
 import Config (defaultSiteConfig, SiteConfig(..))
+import Exception (catch, Exception(..), ($?), (??), (<<?))
 import DefaultDocumentHandler (createDefaultDocumentHandler)
 import Gemini (
   parseRequest,
@@ -38,20 +40,27 @@ createRouter config = route noHandlerResponse [
 
 createConnectionHandler :: Router -> ConnectionHandler
 createConnectionHandler route sockAddr ctxt = do
-  let readRequest = parseRequest sockAddr `fmap` recvData ctxt
+  dataIn <- recvData ctxt
+  let request = parseRequest sockAddr dataIn
+  response <- fmap succeed . route <<? request
   let sendResponse = sendData ctxt . serialiseResponse
-  request <- readRequest
-  case request of
-    Just request  -> route request >>= sendResponse
-    Nothing       -> invalidRequestResponse >>= sendResponse
+  let handleError _ = invalidRequestResponse >>= sendResponse
+  catch handleError (sendResponse $? response)
+
+loadConfiguration :: Args -> IO (Either String SiteConfig)
+loadConfiguration (Args filePath) = return . return $ defaultSiteConfig -- TODO!
+
+serve :: Certificate -> ConnectionHandler -> IO ()
+serve cert connectionHandler = do
+  logMsg "Taking protein pills and putting helmet on."
+  serveTlsRequest cert connectionHandler
 
 main :: IO ()
 main = do
-  logMsg "Taking protein pills and putting helmet on"
-  let config = defaultSiteConfig
-  let router = createRouter config
-  let connectionHandler = createConnectionHandler router
-  cert <- cfgLoadServerCert config
-  case cert of
-    Just cert -> serveTlsRequest cert connectionHandler
-    Nothing   -> logMsg "Failed to load server certificate."
+  args <- loadArgs
+  config <- loadConfiguration <<? args
+  cert <- cfgLoadServerCert <<? config
+  let router = createRouter $? config
+  let connectionHandler = createConnectionHandler $? router
+  let handleError = either logMsg id
+  catch handleError (serve $? cert ?? connectionHandler)

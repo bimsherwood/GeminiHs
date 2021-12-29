@@ -1,6 +1,7 @@
 
 ## TODO:
 
+- Accept command-line parameters
 - Configuration files
 
 ## Priority
